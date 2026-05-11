@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import mongoose from "mongoose";
 import connectDB from "./config/db.js";
 
 import providerRoutes from "./routes/providerRoutes.js";
@@ -39,20 +40,24 @@ app.use(errorHandler);
 // START
 const PORT = process.env.PORT || 5000;
 
-const server = app.listen(PORT, () => {
-  console.log(`🚀 Server running on ${PORT}`);
-});
+// ✅ Only start listening for local requests AFTER the database connects.
+// This prevents "buffering timed out" errors when the DB takes a few seconds to connect.
+mongoose.connection.once("open", () => {
+  const server = app.listen(PORT, () => {
+    console.log(`🚀 Server running on ${PORT}`);
+  });
 
-// ✅ Handle port-in-use
-server.on("error", (err) => {
-  if (err.code === "EADDRINUSE") {
-    console.error(`❌ Port ${PORT} is already in use!`);
-    console.error(`💡 Fix: Open a NEW terminal and run:`);
-    console.error(`   npx kill-port ${PORT}`);
-    console.error(`   Then restart: npm run dev`);
-  } else {
-    console.error("❌ Server error:", err);
-  }
+  // ✅ Handle port-in-use
+  server.on("error", (err) => {
+    if (err.code === "EADDRINUSE") {
+      console.error(`❌ Port ${PORT} is already in use!`);
+      console.error(`💡 Fix: Open a NEW terminal and run:`);
+      console.error(`   npx kill-port ${PORT}`);
+      console.error(`   Then restart: npm run dev`);
+    } else {
+      console.error("❌ Server error:", err);
+    }
+  });
 });
 
 // ✅ Prevent unhandled errors from crashing the server
