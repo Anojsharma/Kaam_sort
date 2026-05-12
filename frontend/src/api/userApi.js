@@ -11,3 +11,13 @@ export const syncUser = async (userData) => {
     throw error;
   }
 };
+
+export const deleteUserByClerkId = async (clerkUserId) => {
+  try {
+    const response = await axios.delete(`${API_URL}/${clerkUserId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    throw error;
+  }
+};

@@ -39,3 +39,26 @@ export const syncUser = async (req, res, next) => {
     next(err);
   }
 };
+
+export const deleteUser = async (req, res, next) => {
+  try {
+    const { clerkUserId } = req.params;
+
+    if (!clerkUserId) {
+      return res.status(400).json({ success: false, message: "Missing clerkUserId" });
+    }
+
+    const user = await User.findOneAndDelete({ clerkUserId });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    console.log(`✅ User ${clerkUserId} deleted from MongoDB`);
+    res.status(200).json({ success: true, message: "User deleted successfully" });
+  } catch (err) {
+    console.error("❌ DELETE USER ERROR:", err);
+    next(err);
+  }
+};
+
