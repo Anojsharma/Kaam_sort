@@ -7,6 +7,7 @@ import connectDB from "./config/db.js";
 import providerRoutes from "./routes/providerRoutes.js";
 import webhookRoutes from "./routes/webhookRoutes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
 dotenv.config();
@@ -31,6 +32,7 @@ app.get("/test", (req, res) => {
 });
 
 // ✅ ROUTES
+app.use("/api/users", userRoutes);
 app.use("/api/providers", providerRoutes);
 app.use("/api/bookings", bookingRoutes);
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "@clerk/react";
+import { syncUser } from "../../api/userApi";
 import "./Onboarding.css";
 
 const Onboarding = () => {
@@ -36,8 +37,19 @@ const Onboarding = () => {
       await user.reload();
 
    if (selectedRole === "user") {
-  navigate("/");
-} else {
+     try {
+       await syncUser({
+         clerkUserId: user.id,
+         email: user.primaryEmailAddress?.emailAddress,
+         firstName: user.firstName,
+         lastName: user.lastName,
+         imageUrl: user.imageUrl
+       });
+     } catch (err) {
+       console.error("Failed to sync user:", err);
+     }
+     navigate("/");
+   } else {
   navigate("/provider-auth"); 
 }
     } catch (error) {

@@ -1,4 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useEffect } from "react";
+import { useUser } from "@clerk/react";
+import { syncUser } from "./api/userApi";
 import Home from "./pages/Home/Home";
 import Navbar from "./components/Navbar/Navbar";
 import ProviderAuth from "./pages/ProviderAuth/ProviderAuth";
@@ -12,6 +15,32 @@ import Onboarding from "./pages/Onboarding/Onboarding";
 import AuthRedirect from "./pages/AuthRedirect/AuthRedirect";
 
 function App() {
+  const { user, isSignedIn, isLoaded } = useUser();
+
+  useEffect(() => {
+    const sync = async () => {
+      if (isLoaded && isSignedIn && user) {
+        const role = user.unsafeMetadata?.role;
+        // Also sync if no role yet, they might just be created.
+        // Actually onboarding sets the role and syncs, but it's safe to sync anytime.
+        if (role === "user") {
+          try {
+            await syncUser({
+              clerkUserId: user.id,
+              email: user.primaryEmailAddress?.emailAddress,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              imageUrl: user.imageUrl
+            });
+          } catch (err) {
+            console.error("Global sync failed:", err);
+          }
+        }
+      }
+    };
+    sync();
+  }, [isLoaded, isSignedIn, user]);
+
   return (
     <BrowserRouter>
       <Navbar />
