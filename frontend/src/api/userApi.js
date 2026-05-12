@@ -1,10 +1,10 @@
 import axios from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const API_URL = `${import.meta.env.VITE_API_URL || "http://localhost:5001"}/api/users`;
 
 export const syncUser = async (userData) => {
   try {
-    const response = await axios.post(`${API_URL}/users/sync`, userData);
+    const response = await axios.post(`${API_URL}/sync`, userData);
     return response.data;
   } catch (error) {
     console.error("Error syncing user:", error);
