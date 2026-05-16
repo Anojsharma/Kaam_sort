@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useUser, useClerk } from "@clerk/react";
 import { useNavigate } from "react-router-dom";
 import { getProviderByClerkId, deleteProviderByClerkId } from "../../api/providerApi";
+import { getProviderBookings, updateBookingStatus } from "../../api/bookingApi";
 import { useAppContext } from "../../context/AppContext";
 import "./ProviderDashboard.css";
 
@@ -11,6 +12,7 @@ const ProviderDashboard = () => {
   const navigate = useNavigate();
   const { refreshProviders } = useAppContext();
   const [provider, setProvider] = useState(null);
+  const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [deleting, setDeleting] = useState(false);
@@ -31,6 +33,13 @@ const ProviderDashboard = () => {
 
         if (data && data._id) {
           setProvider(data);
+          // Fetch incoming bookings for this provider
+          try {
+            const bData = await getProviderBookings(data._id);
+            setBookings(bData);
+          } catch(err) {
+            console.error("Failed to fetch bookings", err);
+          }
         } else {
           // No provider profile found — redirect to create one
           navigate("/provider-auth");
@@ -89,6 +98,19 @@ const ProviderDashboard = () => {
     } finally {
       setDeleting(false);
       setShowConfirm(false);
+    }
+  };
+
+  // ✅ HANDLE BOOKING STATUS CHANGE
+  const handleStatusChange = async (bookingId, newStatus) => {
+    try {
+      await updateBookingStatus(bookingId, newStatus);
+      // Update local state
+      setBookings(prev => 
+        prev.map(b => b._id === bookingId ? { ...b, status: newStatus } : b)
+      );
+    } catch (err) {
+      alert("Failed to update status");
     }
   };
 
@@ -191,6 +213,36 @@ const ProviderDashboard = () => {
         </div>
 
       </div>
+
+      {/* INCOMING BOOKINGS SECTION */}
+      <div className="bookings-section" style={{ marginTop: "30px" }}>
+        <h2>Incoming Bookings</h2>
+        {bookings.length === 0 ? (
+          <p style={{ color: "#666", marginTop: "10px" }}>No bookings yet.</p>
+        ) : (
+          <div className="bookings-list" style={{ display: "flex", flexDirection: "column", gap: "15px", marginTop: "15px" }}>
+            {bookings.map((b) => (
+              <div key={b._id} className="card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <h4>Service Date: {new Date(b.date).toLocaleString()}</h4>
+                  <p><strong>Location:</strong> {b.serviceLocation}</p>
+                  <p><strong>Status:</strong> <span style={{ fontWeight: "bold", color: b.status === "pending" ? "#eab308" : b.status === "completed" ? "#10b981" : "#ef4444" }}>{b.status.toUpperCase()}</span></p>
+                  {b.notes && <p><strong>Notes:</strong> {b.notes}</p>}
+                </div>
+                <div style={{ display: "flex", gap: "10px", flexDirection: "column" }}>
+                  {b.status === "pending" && (
+                    <>
+                      <button onClick={() => handleStatusChange(b._id, "completed")} style={{ background: "#10b981", color: "white", border: "none", padding: "8px 12px", borderRadius: "4px", cursor: "pointer" }}>Mark Completed</button>
+                      <button onClick={() => handleStatusChange(b._id, "cancelled")} style={{ background: "#ef4444", color: "white", border: "none", padding: "8px 12px", borderRadius: "4px", cursor: "pointer" }}>Reject / Cancel</button>
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
 
       {/* ✅ DELETE CONFIRMATION MODAL */}
       {showConfirm && (

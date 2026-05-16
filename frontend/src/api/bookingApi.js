@@ -41,3 +41,13 @@ export const updateBookingDate = async (id, date) => {
     throw error;
   }
 };
+
+export const getProviderBookings = async (providerId) => {
+  try {
+    const response = await axios.get(`${API_URL}/provider/${providerId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching provider bookings:", error);
+    throw error;
+  }
+};
