@@ -85,3 +85,29 @@ export const updateBookingStatus = async (req, res, next) => {
     next(err);
   }
 };
+
+// ✅ UPDATE BOOKING DATE/TIME
+export const updateBookingDate = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { date } = req.body;
+
+    if (!date) {
+      return res.status(400).json({ message: "Date is required" });
+    }
+
+    const booking = await Booking.findByIdAndUpdate(
+      id,
+      { date },
+      { new: true, runValidators: true }
+    );
+
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    res.json(booking);
+  } catch (err) {
+    next(err);
+  }
+};

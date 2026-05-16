@@ -1,12 +1,15 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useAppContext } from "../../context/AppContext";
 import { useState } from "react";
+import { useUser } from "@clerk/react";
+import { createBooking } from "../../api/bookingApi";
 import "./Booking.css";
 
 const Booking = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { providers, addBooking } = useAppContext();
+  const { providers } = useAppContext();
+  const { user, isSignedIn } = useUser();
 
   // ✅ FIX: Handle both MongoDB _id (string) and dummy id (number)
   const provider = providers.find(
@@ -15,6 +18,8 @@ const Booking = () => {
 
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
+  const [serviceLocation, setServiceLocation] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!provider) {
     return (
@@ -41,9 +46,14 @@ const Booking = () => {
   const providerId = provider._id || provider.id;
 
   // 🔥 HANDLE BOOKING
-  const handleBooking = () => {
-    if (!date || !time) {
-      alert("Select date and time");
+  const handleBooking = async () => {
+    if (!isSignedIn) {
+      alert("Please log in to book a service");
+      return;
+    }
+
+    if (!date || !time || !serviceLocation) {
+      alert("Please fill in all details including location");
       return;
     }
 
@@ -69,23 +79,23 @@ const Booking = () => {
       return;
     }
 
-    const booking = {
-      id: Date.now(),
-      providerId: providerId,
-      providerName: provider.name,
-      category: provider.category,
-      price: provider.price,
-      image: provider.image,
-      date,
-      time
-    };
+    setIsSubmitting(true);
 
-    // ✅ use context
-    addBooking(booking);
+    try {
+      await createBooking({
+        userId: user.id,
+        providerId: providerId,
+        date: selectedDateTime.toISOString(),
+        serviceLocation,
+      });
 
-    alert("Booking Confirmed ✅");
-
-    navigate("/");
+      alert("Booking Confirmed ✅");
+      navigate("/my-bookings");
+    } catch (err) {
+      alert("Error creating booking: " + (err.response?.data?.message || err.message));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -110,6 +120,14 @@ const Booking = () => {
       </div>
 
       <div className="booking-form">
+        <label>Service Location (Address)</label>
+        <input
+          type="text"
+          value={serviceLocation}
+          onChange={(e) => setServiceLocation(e.target.value)}
+          placeholder="e.g. 123 Main St, Apartment 4B"
+        />
+
         <label>Select Date</label>
         <input
           type="date"
@@ -127,8 +145,8 @@ const Booking = () => {
           <option>4:00 PM</option>
         </select>
 
-        <button onClick={handleBooking} className="confirm-btn">
-          Confirm Booking
+        <button onClick={handleBooking} className="confirm-btn" disabled={isSubmitting}>
+          {isSubmitting ? "Booking..." : "Confirm Booking"}
         </button>
       </div>
     </div>

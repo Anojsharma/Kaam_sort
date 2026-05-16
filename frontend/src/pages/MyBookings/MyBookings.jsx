@@ -1,37 +1,81 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useUser, useClerk } from "@clerk/react";
 import { useNavigate } from "react-router-dom";
-import { useAppContext } from "../../context/AppContext";
 import { deleteUserByClerkId } from "../../api/userApi";
+import { getUserBookings, updateBookingStatus, updateBookingDate } from "../../api/bookingApi";
 import "./MyBookings.css";
 
 const MyBookings = () => {
   const { user } = useUser();
   const { signOut } = useClerk();
   const navigate = useNavigate();
-  const { bookings, cancelBooking, updateBooking } = useAppContext();
+  
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
 
   const [editId, setEditId] = useState(null);
   const [newDate, setNewDate] = useState("");
   const [newTime, setNewTime] = useState("");
 
-  const handleUpdate = (booking) => {
+  const fetchBookings = async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      const data = await getUserBookings(user.id);
+      setBookings(data);
+    } catch (err) {
+      console.error("Error fetching bookings:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBookings();
+  }, [user]);
+
+  const handleUpdate = async (booking) => {
     if (!newDate || !newTime) {
       alert("Select date and time");
       return;
     }
 
-    const updatedBooking = {
-      ...booking,
-      date: newDate,
-      time: newTime
-    };
+    const [hourMin, modifier] = newTime.split(" ");
+    let [hours, minutes] = hourMin.split(":");
 
-    updateBooking(updatedBooking);
+    if (modifier === "PM" && hours !== "12") hours = parseInt(hours) + 12;
+    if (modifier === "AM" && hours === "12") hours = 0;
 
-    setEditId(null);
-    alert("Booking Updated ✅");
+    const selectedDateTime = new Date(newDate);
+    selectedDateTime.setHours(hours, minutes, 0);
+
+    if (selectedDateTime < new Date()) {
+      alert("Cannot set past time ❌");
+      return;
+    }
+
+    try {
+      await updateBookingDate(booking._id, selectedDateTime.toISOString());
+      setEditId(null);
+      alert("Booking Updated ✅");
+      fetchBookings();
+    } catch (err) {
+      alert("Error updating booking: " + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const handleCancelBooking = async (id) => {
+    const confirmCancel = window.confirm("Are you sure you want to cancel this booking?");
+    if (!confirmCancel) return;
+
+    try {
+      await updateBookingStatus(id, "cancelled");
+      alert("Booking Cancelled ✅");
+      fetchBookings();
+    } catch (err) {
+      alert("Error cancelling booking");
+    }
   };
 
   const handleDeleteAccount = async () => {
@@ -72,6 +116,10 @@ const MyBookings = () => {
     }
   };
 
+  if (loading) {
+    return <div style={{ textAlign: "center", padding: "50px" }}>Loading bookings...</div>;
+  }
+
   return (
     <div className="my-bookings">
       <h1>My Bookings</h1>
@@ -80,16 +128,21 @@ const MyBookings = () => {
         <p>No bookings yet</p>
       ) : (
         <div className="booking-list">
-          {bookings.map((b) => (
-            <div key={b.id} className="booking-card">
+          {bookings.map((b) => {
+            const bDate = new Date(b.date);
+            const displayDate = bDate.toLocaleDateString("en-CA"); // YYYY-MM-DD
+            const displayTime = bDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
 
-              <img src={b.image} alt="" className="booking-img" />
+            return (
+            <div key={b._id} className={`booking-card ${b.status === 'cancelled' ? 'cancelled-booking' : ''}`}>
+
+              <img src={b.providerId?.image || "https://via.placeholder.com/100"} alt="" className="booking-img" />
 
               <div className="booking-details">
-                <h3>{b.providerName}</h3>
-                <p>{b.category}</p>
+                <h3>{b.providerId?.name || "Unknown Provider"}</h3>
+                <p>{b.providerId?.category || ""}</p>
 
-                {editId === b.id ? (
+                {editId === b._id ? (
                   <>
                     <input
                       type="date"
@@ -118,47 +171,53 @@ const MyBookings = () => {
                   </>
                 ) : (
                   <>
-                    <p><strong>Date:</strong> {b.date}</p>
-                    <p><strong>Time:</strong> {b.time}</p>
+                    <p><strong>Date:</strong> {displayDate}</p>
+                    <p><strong>Time:</strong> {displayTime}</p>
+                    {b.serviceLocation && <p><strong>Location:</strong> {b.serviceLocation}</p>}
+                    <p><strong>Status:</strong> <span style={{ textTransform: "capitalize", color: b.status === 'cancelled' ? 'red' : 'green' }}>{b.status}</span></p>
                   </>
                 )}
 
-                <p className="price">₹{b.price}</p>
+                <p className="price">₹{b.providerId?.price || 0}</p>
               </div>
 
               <div className="actions">
-                {editId === b.id ? (
-                  <button
-                    className="cancel-btn"
-                    onClick={() => setEditId(null)}
-                  >
-                    Cancel
-                  </button>
-                ) : (
+                {b.status !== "cancelled" && (
                   <>
-                    <button
-                      className="edit-btn"
-                      onClick={() => {
-                        setEditId(b.id);
-                        setNewDate(b.date);
-                        setNewTime(b.time);
-                      }}
-                    >
-                      Change Time
-                    </button>
+                    {editId === b._id ? (
+                      <button
+                        className="cancel-btn"
+                        onClick={() => setEditId(null)}
+                      >
+                        Cancel
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          className="edit-btn"
+                          onClick={() => {
+                            setEditId(b._id);
+                            setNewDate(displayDate);
+                            setNewTime(displayTime);
+                          }}
+                        >
+                          Change Time
+                        </button>
 
-                    <button
-                      className="cancel-btn"
-                      onClick={() => cancelBooking(b.id)}
-                    >
-                      Cancel Booking
-                    </button>
+                        <button
+                          className="cancel-btn"
+                          onClick={() => handleCancelBooking(b._id)}
+                        >
+                          Cancel Booking
+                        </button>
+                      </>
+                    )}
                   </>
                 )}
               </div>
 
             </div>
-          ))}
+          )})}
         </div>
       )}
 

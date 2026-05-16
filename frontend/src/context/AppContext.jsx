@@ -12,38 +12,6 @@ export const AppProvider = ({ children }) => {
     category: null
   });
 
-  const [bookings, setBookings] = useState([]);
-
-  // ✅ Load bookings
-  useEffect(() => {
-    try {
-      const data = JSON.parse(localStorage.getItem("bookings")) || [];
-      setBookings(data);
-    } catch {
-      setBookings([]);
-    }
-  }, []);
-
-  const addBooking = (booking) => {
-    const updated = [...bookings, booking];
-    setBookings(updated);
-    localStorage.setItem("bookings", JSON.stringify(updated));
-  };
-
-  const cancelBooking = (id) => {
-    const updated = bookings.filter((b) => b.id !== id);
-    setBookings(updated);
-    localStorage.setItem("bookings", JSON.stringify(updated));
-  };
-
-  const updateBooking = (updatedBooking) => {
-    const updated = bookings.map((b) =>
-      b.id === updatedBooking.id ? updatedBooking : b
-    );
-
-    setBookings(updated);
-    localStorage.setItem("bookings", JSON.stringify(updated));
-  };
 
   // ✅ Fetch providers (REAL backend only)
   const fetchProviders = async () => {
@@ -96,10 +64,6 @@ export const AppProvider = ({ children }) => {
         providersError,
         filters,
         setFilters,
-        bookings,
-        addBooking,
-        cancelBooking,
-        updateBooking,
         refreshProviders
       }}
     >
