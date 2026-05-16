@@ -25,3 +25,15 @@ export const deleteProviderByClerkId = async (clerkUserId) => {
   const res = await axios.delete(`${API}/${clerkUserId}`);
   return res.data;
 };
+
+// ✅ SEND OTP
+export const sendProviderOtp = async (phone) => {
+  const res = await axios.post(`${API}/send-otp`, { phone });
+  return res.data;
+};
+
+// ✅ VERIFY OTP
+export const verifyProviderOtp = async (phone, otp) => {
+  const res = await axios.post(`${API}/verify-otp`, { phone, otp });
+  return res.data;
+};

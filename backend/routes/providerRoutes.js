@@ -5,10 +5,14 @@ import {
   getProviderByClerkId,
   updateProviderProfile,
   deleteProviderByClerkId,
+  sendOtp,
+  verifyOtp,
 } from "../controllers/providerController.js";
 
 const router = express.Router();
 
+router.post("/send-otp", sendOtp);
+router.post("/verify-otp", verifyOtp);
 router.post("/", createProvider);
 router.get("/", getAllProviders);
 router.get("/:clerkUserId", getProviderByClerkId);

@@ -1,4 +1,8 @@
 import Provider from "../models/Provider.js";
+import { sendSMS } from "../utils/smsService.js";
+
+// In-memory store for OTPs (For production, use Redis or MongoDB)
+const otpStore = new Map();
 
 // ✅ CREATE
 export const createProvider = async (req, res, next) => {
@@ -127,6 +131,63 @@ export const deleteProviderByClerkId = async (req, res, next) => {
     res.json({ success: true, message: "Provider deleted" });
   } catch (err) {
     console.error("❌ DELETE ERROR:", err);
+    next(err);
+  }
+};
+
+// ✅ SEND OTP
+export const sendOtp = async (req, res, next) => {
+  try {
+    const { phone } = req.body;
+    if (!phone) {
+      return res.status(400).json({ success: false, message: "Phone number is required" });
+    }
+
+    // Generate a 6 digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // Save to memory (expires in 5 minutes)
+    otpStore.set(phone, { otp, expiresAt: Date.now() + 5 * 60 * 1000 });
+
+    const message = `Your Kaam Sorted Provider verification code is: ${otp}`;
+    await sendSMS(phone, message);
+
+    res.json({ success: true, message: "OTP sent successfully" });
+  } catch (err) {
+    console.error("❌ SEND OTP ERROR:", err);
+    next(err);
+  }
+};
+
+// ✅ VERIFY OTP
+export const verifyOtp = async (req, res, next) => {
+  try {
+    const { phone, otp } = req.body;
+    if (!phone || !otp) {
+      return res.status(400).json({ success: false, message: "Phone and OTP are required" });
+    }
+
+    const storedData = otpStore.get(phone);
+
+    if (!storedData) {
+      return res.status(400).json({ success: false, message: "No OTP found or expired for this number" });
+    }
+
+    if (Date.now() > storedData.expiresAt) {
+      otpStore.delete(phone);
+      return res.status(400).json({ success: false, message: "OTP has expired" });
+    }
+
+    if (storedData.otp !== otp) {
+      return res.status(400).json({ success: false, message: "Invalid OTP" });
+    }
+
+    // Verification successful, remove OTP from store
+    otpStore.delete(phone);
+
+    res.json({ success: true, message: "OTP verified successfully" });
+  } catch (err) {
+    console.error("❌ VERIFY OTP ERROR:", err);
     next(err);
   }
 };

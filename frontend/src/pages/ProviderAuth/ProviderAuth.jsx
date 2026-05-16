@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { createProvider, getProviderByClerkId } from "../../api/providerApi";
+import { createProvider, getProviderByClerkId, sendProviderOtp, verifyProviderOtp } from "../../api/providerApi";
 import { useUser } from "@clerk/react";
 import { useAppContext } from "../../context/AppContext";
 import "./ProviderAuth.css";
@@ -12,6 +12,12 @@ const ProviderAuth = () => {
 
   const [submitting, setSubmitting] = useState(false);
   const [checking, setChecking] = useState(true);
+
+  // OTP States
+  const [otpSent, setOtpSent] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [verifying, setVerifying] = useState(false);
 
   // ✅ Check if user already has a provider profile
   useEffect(() => {
@@ -64,7 +70,7 @@ const ProviderAuth = () => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  // ✅ IMAGE UPLOAD (Base64 - no Cloudinary needed)
+  // ✅ IMAGE UPLOAD (Base64)
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -84,11 +90,52 @@ const ProviderAuth = () => {
     reader.readAsDataURL(file);
   };
 
+  const handleSendOtp = async () => {
+    if (!form.phone || form.phone.length < 10) {
+      alert("Please enter a valid phone number including country code (e.g., +1234567890)");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      await sendProviderOtp(form.phone);
+      setOtpSent(true);
+      alert("OTP Sent! (If Twilio is not configured, check your backend terminal for the code)");
+    } catch (err) {
+      alert("Failed to send OTP: " + (err.response?.data?.message || err.message));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!otp) {
+      alert("Please enter the OTP");
+      return;
+    }
+
+    try {
+      setVerifying(true);
+      await verifyProviderOtp(form.phone, otp);
+      setOtpVerified(true);
+      alert("Phone verified successfully! You can now save your profile.");
+    } catch (err) {
+      alert("Invalid or expired OTP: " + (err.response?.data?.message || err.message));
+    } finally {
+      setVerifying(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!user) {
       alert("Login first");
+      return;
+    }
+
+    if (!otpVerified) {
+      alert("Please verify your phone number first");
       return;
     }
 
@@ -120,23 +167,64 @@ const ProviderAuth = () => {
         <h2>Complete Your Profile</h2>
 
         <div className="form-grid">
-          <input name="name" placeholder="Name" onChange={handleChange} required />
-          <input name="phone" placeholder="Phone" onChange={handleChange} required />
-          <input name="category" placeholder="Category" onChange={handleChange} required />
-          <input name="experience" type="number" placeholder="Experience" onChange={handleChange} required />
-          <input name="price" type="number" placeholder="Price" onChange={handleChange} required />
-          <input name="location" placeholder="Location" onChange={handleChange} required />
+          <input name="name" placeholder="Name" onChange={handleChange} required disabled={otpVerified} />
+          
+          <input 
+            name="phone" 
+            placeholder="Phone (e.g. +1234567890)" 
+            onChange={handleChange} 
+            required 
+            disabled={otpSent || otpVerified} 
+          />
+          
+          <input name="category" placeholder="Category" onChange={handleChange} required disabled={otpVerified} />
+          <input name="experience" type="number" placeholder="Experience" onChange={handleChange} required disabled={otpVerified} />
+          <input name="price" type="number" placeholder="Price" onChange={handleChange} required disabled={otpVerified} />
+          <input name="location" placeholder="Location" onChange={handleChange} required disabled={otpVerified} />
         </div>
 
-        <textarea name="about" placeholder="About" onChange={handleChange} />
+        <textarea name="about" placeholder="About" onChange={handleChange} disabled={otpVerified} />
 
-        <input type="file" accept="image/*" onChange={handleImageUpload} />
+        <input type="file" accept="image/*" onChange={handleImageUpload} disabled={otpVerified} />
 
-        {form.image && <img src={form.image} width={100} />}
+        {form.image && <img src={form.image} width={100} alt="Provider Preview" style={{ marginBottom: "15px" }} />}
 
-        <button disabled={submitting}>
-          {submitting ? "Saving..." : "Save Profile"}
-        </button>
+        {!otpVerified ? (
+          <div className="otp-section" style={{ marginTop: "15px", padding: "15px", background: "#f9f9f9", borderRadius: "8px" }}>
+            {!otpSent ? (
+              <button 
+                type="button" 
+                onClick={handleSendOtp} 
+                disabled={submitting || !form.phone}
+                style={{ width: "100%", padding: "10px", background: "#2563eb", color: "white", border: "none", borderRadius: "4px" }}
+              >
+                {submitting ? "Sending OTP..." : "Send OTP"}
+              </button>
+            ) : (
+              <div style={{ display: "flex", gap: "10px" }}>
+                <input 
+                  type="text" 
+                  placeholder="Enter OTP" 
+                  value={otp} 
+                  onChange={(e) => setOtp(e.target.value)} 
+                  style={{ flex: 1, padding: "10px" }}
+                />
+                <button 
+                  type="button" 
+                  onClick={handleVerifyOtp} 
+                  disabled={verifying}
+                  style={{ padding: "10px 20px", background: "#10b981", color: "white", border: "none", borderRadius: "4px" }}
+                >
+                  {verifying ? "Verifying..." : "Verify OTP"}
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <button type="submit" disabled={submitting} style={{ marginTop: "20px" }}>
+            {submitting ? "Saving..." : "Save Profile"}
+          </button>
+        )}
       </form>
     </div>
   );

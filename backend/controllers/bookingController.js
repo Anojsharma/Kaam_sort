@@ -1,5 +1,6 @@
 import Booking from "../models/Booking.js";
 import Provider from "../models/Provider.js";
+import { sendSMS } from "../utils/smsService.js";
 
 // ✅ CREATE BOOKING
 export const createBooking = async (req, res, next) => {
@@ -23,6 +24,16 @@ export const createBooking = async (req, res, next) => {
       serviceLocation,
       notes: notes || "",
     });
+
+    // Notify Provider via SMS
+    const bookingDate = new Date(date).toLocaleString();
+    const message = `Kaam Sorted: You have a new booking!
+Service: ${provider.category}
+Date/Time: ${bookingDate}
+Location: ${serviceLocation}`;
+
+    // Fire and forget SMS (don't block the API response if SMS fails)
+    sendSMS(provider.phone, message).catch(console.error);
 
     res.status(201).json(booking);
   } catch (err) {
