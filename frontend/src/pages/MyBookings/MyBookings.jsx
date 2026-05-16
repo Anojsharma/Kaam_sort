@@ -136,11 +136,17 @@ const MyBookings = () => {
             return (
             <div key={b._id} className={`booking-card ${b.status === 'cancelled' ? 'cancelled-booking' : ''}`}>
 
-              <img src={b.providerId?.image || "https://via.placeholder.com/100"} alt="" className="booking-img" />
+              <img 
+                src={(b.providerId?.image && typeof b.providerId.image === 'string' && b.providerId.image.trim() !== "") 
+                  ? b.providerId.image 
+                  : "https://ui-avatars.com/api/?name=" + (b.providerId?.name ? b.providerId.name.replace(/ /g, "+") : "Unknown+Provider") + "&background=random"} 
+                alt="Provider" 
+                className="booking-img" 
+              />
 
               <div className="booking-details">
-                <h3>{b.providerId?.name || "Unknown Provider"}</h3>
-                <p>{b.providerId?.category || ""}</p>
+                <h3 style={{ textTransform: "capitalize" }}>{b.providerId?.name || "Unknown Provider (Deleted Account)"}</h3>
+                <p>{b.providerId?.category || "N/A"}</p>
 
                 {editId === b._id ? (
                   <>

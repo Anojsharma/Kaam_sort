@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { createProvider, getProviderByClerkId, sendProviderOtp, verifyProviderOtp } from "../../api/providerApi";
 import { useUser } from "@clerk/react";
 import { useAppContext } from "../../context/AppContext";
+import LoadingScreen from "../../components/LoadingScreen/LoadingScreen";
 import "./ProviderAuth.css";
 
 const ProviderAuth = () => {
@@ -54,11 +55,7 @@ const ProviderAuth = () => {
   });
 
   if (!isLoaded || checking) {
-    return (
-      <div className="provider-auth-container">
-        <p style={{ textAlign: "center", padding: "40px" }}>Loading...</p>
-      </div>
-    );
+    return <LoadingScreen message="Checking profile..." />;
   }
 
   if (!user) {

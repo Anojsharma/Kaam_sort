@@ -13,7 +13,8 @@ import MyBookings from "./pages/MyBookings/MyBookings";
 import Footer from "./components/Footer/Footer";
 import Onboarding from "./pages/Onboarding/Onboarding";
 import AuthRedirect from "./pages/AuthRedirect/AuthRedirect";
-
+import NetworkErrorBoundary from "./components/NetworkErrorBoundary/NetworkErrorBoundary";
+import LoadingScreen from "./components/LoadingScreen/LoadingScreen";
 function App() {
   const { user, isSignedIn, isLoaded } = useUser();
 
@@ -41,24 +42,30 @@ function App() {
     sync();
   }, [isLoaded, isSignedIn, user]);
 
+  if (!isLoaded) {
+    return <LoadingScreen message="Starting Kaam Sorted..." />;
+  }
+
   return (
-    <BrowserRouter>
-      <Navbar />
+    <NetworkErrorBoundary>
+      <BrowserRouter>
+        <Navbar />
 
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/search" element={<Search />} />
-        <Route path="/onboarding" element={<Onboarding />} />
-        <Route path="/provider-auth" element={<ProviderAuth />} />
-        <Route path="/provider-dashboard" element={<ProviderDashboard />} />
-        <Route path="/provider/:id" element={<ProviderDetails />} />
-        <Route path="/booking/:id" element={<Booking />} />
-        <Route path="/my-bookings" element={<MyBookings />} />
-        <Route path="/auth" element={<AuthRedirect />} />
-      </Routes>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/search" element={<Search />} />
+          <Route path="/onboarding" element={<Onboarding />} />
+          <Route path="/provider-auth" element={<ProviderAuth />} />
+          <Route path="/provider-dashboard" element={<ProviderDashboard />} />
+          <Route path="/provider/:id" element={<ProviderDetails />} />
+          <Route path="/booking/:id" element={<Booking />} />
+          <Route path="/my-bookings" element={<MyBookings />} />
+          <Route path="/auth" element={<AuthRedirect />} />
+        </Routes>
 
-      <Footer />
-    </BrowserRouter>
+        <Footer />
+      </BrowserRouter>
+    </NetworkErrorBoundary>
   );
 }
 

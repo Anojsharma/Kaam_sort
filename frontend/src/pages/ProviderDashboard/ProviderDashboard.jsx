@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { getProviderByClerkId, deleteProviderByClerkId } from "../../api/providerApi";
 import { getProviderBookings, updateBookingStatus } from "../../api/bookingApi";
 import { useAppContext } from "../../context/AppContext";
+import LoadingScreen from "../../components/LoadingScreen/LoadingScreen";
 import "./ProviderDashboard.css";
 
 const ProviderDashboard = () => {
@@ -116,11 +117,7 @@ const ProviderDashboard = () => {
 
   // ✅ LOADING STATE
   if (!isLoaded || loading) {
-    return (
-      <div style={{ textAlign: "center", padding: "80px 20px" }}>
-        <h2 className="loading">Loading dashboard...</h2>
-      </div>
-    );
+    return <LoadingScreen message="Loading dashboard..." />;
   }
 
   // ✅ ERROR STATE
